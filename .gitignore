@@ -1,0 +1,11 @@
+node_modules/
+.env
+.env.*
+.env.local
+*.log
+npm-debug.log*
+.DS_Store
+*.exe
+photo_data/
+dist/
+build/

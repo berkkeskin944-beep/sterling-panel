@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dostluk SS - Fotoğraf Arşivi</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+    body { background: #0d1117; color: #e6edf3; min-height: 100vh; }
+    .header { background: #161b22; border-bottom: 1px solid #30363d; padding: 16px 24px; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 100; }
+    .header h1 { color: #58a6ff; font-size: 1.5rem; font-weight: 700; letter-spacing: -0.5px; }
+    .header .stats { color: #8b949e; font-size: 0.9rem; }
+    .controls { background: #161b22; border-bottom: 1px solid #30363d; padding: 16px 24px; display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
+    .search-box { flex: 1; min-width: 200px; position: relative; }
+    .search-box input { width: 100%; background: #0d1117; border: 1px solid #30363d; color: #e6edf3; padding: 10px 14px; border-radius: 8px; font-size: 0.95rem; outline: none; transition: border 0.2s; }
+    .search-box input:focus { border-color: #58a6ff; box-shadow: 0 0 0 3px rgba(88,166,255,0.15); }
+    .btn { background: #238636; border: none; color: #fff; padding: 10px 18px; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 0.9rem; transition: background 0.2s, transform 0.1s; }
+    .btn:hover { background: #2ea043; }
+    .btn:active { transform: scale(0.98); }
+    .btn.secondary { background: #30363d; }
+    .btn.secondary:hover { background: #484f58; }
+    .btn.danger { background: #da3633; }
+    .btn.danger:hover { background: #f85149; }
+    .category-tabs { display: flex; gap: 8px; flex-wrap: wrap; margin-left: auto; }
+    .tab { background: #21262d; border: 1px solid #30363d; color: #8b949e; padding: 8px 14px; border-radius: 6px; cursor: pointer; font-size: 0.85rem; transition: all 0.2s; white-space: nowrap; }
+    .tab:hover { border-color: #58a6ff; color: #58a6ff; }
+    .tab.active { background: #58a6ff; border-color: #58a6ff; color: #0d1117; font-weight: 600; }
+    .main { max-width: 1400px; margin: 0 auto; padding: 24px; }
+    .category-section { margin-bottom: 32px; }
+    .category-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; padding-bottom: 8px; border-bottom: 1px solid #21262d; }
+    .category-header h2 { color: #58a6ff; font-size: 1.25rem; }
+    .category-header .count { color: #8b949e; font-size: 0.9rem; font-weight: 400; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 16px; }
+    .card { background: #161b22; border: 1px solid #30363d; border-radius: 12px; overflow: hidden; transition: transform 0.2s, border-color 0.2s, box-shadow 0.2s; position: relative; }
+    .card:hover { transform: translateY(-4px); border-color: #58a6ff; box-shadow: 0 12px 32px rgba(0,0,0,0.4); }
+    .card img { width: 100%; aspect-ratio: 16/10; object-fit: cover; display: block; }
+    .card-overlay { position: absolute; inset: 0; background: linear-gradient(180deg, transparent 50%, rgba(13,17,23,0.95)); opacity: 0; transition: opacity 0.2s; display: flex; flex-direction: column; justify-content: flex-end; padding: 12px; }
+    .card:hover .card-overlay { opacity: 1; }
+    .card-info { display: flex; justify-content: space-between; align-items: center; }
+    .card-name { font-size: 0.8rem; color: #8b949e; max-width: 70%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .card-actions { display: flex; gap: 6px; }
+    .icon-btn { background: rgba(13,17,23,0.8); border: 1px solid #30363d; color: #e6edf3; width: 32px; height: 32px; border-radius: 6px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s; }
+    .icon-btn:hover { background: #58a6ff; border-color: #58a6ff; color: #0d1117; }
+    .empty { text-align: center; padding: 60px 20px; color: #484f58; }
+    .empty svg { width: 64px; height: 64px; margin-bottom: 16px; opacity: 0.5; }
+    .loading { text-align: center; padding: 40px; color: #58a6ff; }
+    .modal { position: fixed; inset: 0; background: rgba(0,0,0,0.9); z-index: 1000; display: none; align-items: center; justify-content: center; flex-direction: column; }
+    .modal.active { display: flex; }
+    .modal img { max-width: 90vw; max-height: 80vh; border-radius: 8px; box-shadow: 0 0 40px rgba(0,0,0,0.5); }
+    .modal-info { margin-top: 16px; color: #8b949e; font-size: 0.9rem; }
+    .modal-close { position: absolute; top: 24px; right: 24px; background: #21262d; border: 1px solid #30363d; color: #e6edf3; width: 44px; height: 44px; border-radius: 50%; cursor: pointer; font-size: 1.5rem; display: flex; align-items: center; justify-content: center; transition: all 0.2s; }
+    .modal-close:hover { background: #da3633; border-color: #da3633; }
+    #dropZone:hover { border-color: #58a6ff; }
+    #dropZone.drag { border-color: #58a6ff; background: rgba(88,166,255,0.1); }
+    .file-item { display:flex;align-items:center;gap:12px;background:#0d1117;border:1px solid #30363d;border-radius:8px;padding:8px 12px;margin-bottom:8px; }
+    .file-item img { width:40px;height:40px;object-fit:cover;border-radius:4px; }
+    .file-item-info { flex:1;min-width:0; }
+    .file-item-name { color:#e6edf3;font-size:0.85rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis; }
+    .file-item-size { color:#8b949e;font-size:0.75rem; }
+    .file-item-remove { background:none;border:none;color:#8b949e;cursor:pointer;padding:4px;font-size:1.2rem; }
+    .file-item-remove:hover { color:#f85149; }
+    @media (max-width: 768px) {
+      .controls { flex-direction: column; align-items: stretch; }
+      .category-tabs { margin-left: 0; justify-content: center; }
+      .search-box { min-width: 0; }
+      .grid { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 12px; }
+    }
+  </style>
+</head>
+<body>
+  <header class="header">
+    <h1>📸 Dostluk SS</h1>
+    <div class="header-actions">
+      <button class="btn" id="uploadBtn">⬆ Yükle</button>
+      <div class="stats" id="globalStats">Yükleniyor...</div>
+    </div>
+  </header>
+  <div class="controls">
+    <div class="search-box">
+      <input type="text" id="searchInput" placeholder="Kategori veya dosya adında ara...">
+    </div>
+    <button class="btn" id="refreshBtn">🔄 Yenile</button>
+    <button class="btn secondary" id="newCatBtn">➕ Kategori</button>
+    <div class="category-tabs" id="categoryTabs"></div>
+  </div>
+  <main class="main" id="mainContent"></main>
+
+  <div class="modal" id="modal">
+    <span class="modal-close" onclick="closeModal()">&times;</span>
+    <img id="modalImg" src="" alt="">
+    <div class="modal-info" id="modalInfo"></div>
+  </div>
+
+  <div class="modal" id="uploadModal">
+    <div class="modal-content" style="background:#161b22;border:1px solid #30363d;border-radius:12px;padding:24px;max-width:500px;width:90%;max-height:90vh;overflow:auto;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
+        <h3 style="color:#58a6ff;">Fotoğraf Yükle</h3>
+        <button class="modal-close" onclick="closeUploadModal()">&times;</button>
+      </div>
+      <div style="margin-bottom:16px;">
+        <label style="display:block;margin-bottom:8px;color:#8b949e;font-size:0.9rem;">Kategori</label>
+        <select id="uploadCategory" style="width:100%;padding:10px;background:#0d1117;border:1px solid #30363d;color:#e6edf3;border-radius:8px;"></select>
+      </div>
+      <div style="margin-bottom:16px;">
+        <label style="display:block;margin-bottom:8px;color:#8b949e;font-size:0.9rem;">Dosyalar (sürükle-bırak veya tıkla)</label>
+        <div id="dropZone" style="border:2px dashed #30363d;border-radius:8px;padding:32px;text-align:center;cursor:pointer;transition:border 0.2s;">
+          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="color:#8b949e;margin-bottom:12px;">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+            <polyline points="17 8 12 3 7 8"/>
+            <line x1="12" y1="3" x2="12" y2="15"/>
+          </svg>
+          <p style="color:#8b949e;">Dosyaları buraya bırakın veya tıklayın</p>
+          <p style="font-size:0.8rem;color:#484f58;margin-top:8px;">PNG, JPG, GIF, WebP • Max 25MB</p>
+        </div>
+        <input type="file" id="fileInput" multiple accept="image/*" style="display:none;">
+      </div>
+      <div style="margin-bottom:16px;">
+        <label style="display:block;margin-bottom:8px;color:#8b949e;font-size:0.9rem;">Veya Linkler (her satıra bir tane)</label>
+        <textarea id="urlInput" rows="4" style="width:100%;padding:10px;background:#0d1117;border:1px solid #30363d;color:#e6edf3;border-radius:8px;font-family:monospace;font-size:0.85rem;" placeholder="https://media.discordapp.net/.../image.png
+https://cdn.discordapp.com/.../photo.jpg"></textarea>
+      </div>
+      <div id="selectedFiles" style="margin-bottom:16px;max-height:200px;overflow:auto;"></div>
+      <div style="display:flex;gap:12px;justify-content:flex-end;">
+        <button class="btn secondary" onclick="closeUploadModal()">İptal</button>
+        <button class="btn" id="doUploadBtn" disabled>Yükle</button>
+      </div>
+      <div id="uploadProgress" style="margin-top:16px;display:none;">
+        <div style="background:#30363d;border-radius:4px;height:8px;overflow:hidden;">
+          <div id="progressBar" style="background:#58a6ff;height:100%;width:0%;transition:width 0.3s;"></div>
+        </div>
+        <p id="progressText" style="margin-top:8px;color:#8b949e;font-size:0.9rem;"></p>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal" id="catModal">
+    <div class="modal-content" style="background:#161b22;border:1px solid #30363d;border-radius:12px;padding:24px;max-width:400px;width:90%;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
+        <h3 style="color:#58a6ff;">Yeni Kategori</h3>
+        <button class="modal-close" onclick="closeCatModal()">&times;</button>
+      </div>
+      <input type="text" id="newCatName" placeholder="Kategori adı (örn: astro,xavi)" style="width:100%;padding:10px;background:#0d1117;border:1px solid #30363d;color:#e6edf3;border-radius:8px;margin-bottom:16px;">
+      <div style="display:flex;gap:12px;justify-content:flex-end;">
+        <button class="btn secondary" onclick="closeCatModal()">İptal</button>
+        <button class="btn" id="createCatBtn">Oluştur</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="data/categories.js"></script>
+  <script src="data/photos.js"></script>
+  <script>
+    let allPhotos = [];
+    let currentFilter = 'all';
+    let searchTerm = '';
+
+    function init() {
+      renderTabs();
+      renderAll();
+      updateStats();
+    }
+
+    function renderTabs() {
+      const tabs = document.getElementById('categoryTabs');
+      tabs.innerHTML = `
+        <button class="tab active" data-cat="all">Tümü (${CATEGORIES.reduce((s,c)=>s+c.count,0)})</button>
+        ${CATEGORIES.map(c => `
+          <button class="tab" data-cat="${c.name}">${c.name} (${c.count})</button>
+        `).join('')}
+      `;
+      tabs.querySelectorAll('.tab').forEach(btn => {
+        btn.onclick = () => {
+          tabs.querySelectorAll('.tab').forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+          currentFilter = btn.dataset.cat;
+          renderAll();
+        };
+      });
+    }
+
+    function renderAll() {
+      const main = document.getElementById('mainContent');
+      const filtered = filterPhotos();
+      
+      if (filtered.length === 0) {
+        main.innerHTML = `
+          <div class="empty">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+              <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+              <circle cx="8.5" cy="8.5" r="1.5"/>
+              <polyline points="21 15 16 10 5 21"/>
+            </svg>
+            <p>${searchTerm ? 'Arama sonucu yok' : (currentFilter === 'all' ? 'Henüz fotoğraf yok' : 'Bu kategoride fotoğraf yok')}</p>
+          </div>
+        `;
+        return;
+      }
+
+      const byCat = {};
+      filtered.forEach(p => {
+        if (!byCat[p.category]) byCat[p.category] = [];
+        byCat[p.category].push(p);
+      });
+
+      main.innerHTML = Object.entries(byCat).map(([cat, photos]) => `
+        <div class="category-section">
+          <div class="category-header">
+            <h2>${cat}</h2>
+            <span class="count">${photos.length} fotoğraf</span>
+          </div>
+          <div class="grid">
+            ${photos.map(p => `
+              <div class="card" onclick="openModal('${p.url}', '${p.filename}', '${p.category}', ${p.size}, '${p.uploadedAt}')">
+                <img src="${p.url}" alt="${p.filename}" loading="lazy">
+                <div class="card-overlay">
+                  <div class="card-info">
+                    <span class="card-name">${p.filename}</span>
+                    <div class="card-actions">
+                      <button class="icon-btn" onclick="event.stopPropagation(); downloadPhoto('${p.url}', '${p.filename}')" title="İndir">⬇</button>
+                      <button class="icon-btn" onclick="event.stopPropagation(); copyLink('${p.url}')" title="Link kopyala">🔗</button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function filterPhotos() {
+      return PHOTOS.filter(p => {
+        const matchesCat = currentFilter === 'all' || p.category === currentFilter;
+        const matchesSearch = !searchTerm || 
+          p.filename.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          p.category.toLowerCase().includes(searchTerm.toLowerCase());
+        return matchesCat && matchesSearch;
+      });
+    }
+
+    function updateStats() {
+      document.getElementById('globalStats').textContent = 
+        `${PHOTOS.length} fotoğraf • ${CATEGORIES.length} kategori`;
+    }
+
+    function openModal(url, filename, category, size, uploadedAt) {
+      document.getElementById('modalImg').src = url;
+      const date = new Date(uploadedAt).toLocaleString('tr-TR');
+      const sizeKB = (size / 1024).toFixed(1);
+      document.getElementById('modalInfo').innerHTML = 
+        `<strong>${filename}</strong> • ${category} • ${sizeKB} KB • ${date}`;
+      document.getElementById('modal').classList.add('active');
+      document.body.style.overflow = 'hidden';
+    }
+
+    function closeModal() {
+      document.getElementById('modal').classList.remove('active');
+      document.getElementById('modalImg').src = '';
+      document.body.style.overflow = '';
+    }
+
+    function downloadPhoto(url, filename) {
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      a.click();
+    }
+
+    function copyLink(url) {
+      navigator.clipboard.writeText(url).then(() => {
+        const btn = event.target.closest('button');
+        const original = btn.innerHTML;
+        btn.innerHTML = '✓';
+        setTimeout(() => btn.innerHTML = original, 1000);
+      });
+    }
+
+    document.getElementById('searchInput').addEventListener('input', (e) => {
+      searchTerm = e.target.value;
+      renderAll();
+    });
+
+    document.getElementById('refreshBtn').onclick = () => location.reload();
+
+    document.getElementById('modal').addEventListener('click', (e) => {
+      if (e.target === document.getElementById('modal')) closeModal();
+    });
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') closeModal();
+    });
+
+    // UPLOAD MODAL
+    const API_BASE = '/api';
+    let uploadFiles = [];
+    let uploadUrls = [];
+
+    function openUploadModal() {
+      loadCategoriesForUpload();
+      document.getElementById('uploadModal').classList.add('active');
+      document.body.style.overflow = 'hidden';
+      resetUploadForm();
+    }
+
+    function closeUploadModal() {
+      document.getElementById('uploadModal').classList.remove('active');
+      document.body.style.overflow = '';
+      resetUploadForm();
+    }
+
+    function resetUploadForm() {
+      uploadFiles = [];
+      uploadUrls = [];
+      document.getElementById('fileInput').value = '';
+      document.getElementById('urlInput').value = '';
+      document.getElementById('selectedFiles').innerHTML = '';
+      document.getElementById('doUploadBtn').disabled = true;
+      document.getElementById('uploadProgress').style.display = 'none';
+      document.getElementById('progressBar').style.width = '0%';
+    }
+
+    function loadCategoriesForUpload() {
+      const sel = document.getElementById('uploadCategory');
+      sel.innerHTML = '<option value="">-- Kategori seç --</option>' + 
+        CATEGORIES.map(c => `<option value="${c.name}">${c.name} (${c.count})</option>`).join('');
+    }
+
+    // Drop zone
+    const dropZone = document.getElementById('dropZone');
+    const fileInput = document.getElementById('fileInput');
+
+    dropZone.onclick = () => fileInput.click();
+    dropZone.ondragover = (e) => { e.preventDefault(); dropZone.classList.add('drag'); };
+    dropZone.ondragleave = () => dropZone.classList.remove('drag');
+    dropZone.ondrop = (e) => { e.preventDefault(); dropZone.classList.remove('drag'); handleFiles(e.dataTransfer.files); };
+    fileInput.onchange = (e) => handleFiles(e.target.files);
+
+    function handleFiles(files) {
+      for (const f of files) {
+        if (!f.type.startsWith('image/')) continue;
+        if (f.size > 25 * 1024 * 1024) { alert('Max 25MB: ' + f.name); continue; }
+        uploadFiles.push(f);
+      }
+      renderSelectedFiles();
+    }
+
+    function renderSelectedFiles() {
+      const container = document.getElementById('selectedFiles');
+      const allItems = [...uploadFiles].map((f, i) => ({ type: 'file', file: f, idx: i })) 
+        .concat(uploadUrls.map((u, i) => ({ type: 'url', url: u, idx: i })));
+      
+      if (allItems.length === 0) {
+        container.innerHTML = '';
+        document.getElementById('doUploadBtn').disabled = true;
+        return;
+      }
+      document.getElementById('doUploadBtn').disabled = false;
+      
+      container.innerHTML = allItems.map(item => `
+        <div class="file-item">
+          ${item.type === 'file' ? `<img src="${URL.createObjectURL(item.file)}" alt="">` : '<svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/></svg>'}
+          <div class="file-item-info">
+            <div class="file-item-name">${item.type === 'file' ? item.file.name : item.url}</div>
+            <div class="file-item-size">${item.type === 'file' ? formatSize(item.file.size) : 'Link'}</div>
+          </div>
+          <button class="file-item-remove" onclick="removeUploadItem('${item.type}', ${item.idx})">&times;</button>
+        </div>
+      `).join('');
+    }
+
+    function removeUploadItem(type, idx) {
+      if (type === 'file') uploadFiles.splice(idx, 1);
+      else uploadUrls.splice(idx, 1);
+      renderSelectedFiles();
+    }
+
+    document.getElementById('urlInput').addEventListener('input', (e) => {
+      uploadUrls = e.target.value.split('\n').map(s => s.trim()).filter(s => s && isImageUrl(s));
+      renderSelectedFiles();
+    });
+
+    function isImageUrl(url) {
+      return /\.(png|jpg|jpeg|gif|webp|bmp)(\?.*)?$/i.test(url) || 
+             /https?:\/\/(media|cdn)\.discordapp\.com\//i.test(url);
+    }
+
+    function formatSize(bytes) {
+      if (bytes < 1024) return bytes + ' B';
+      if (bytes < 1024*1024) return (bytes/1024).toFixed(1) + ' KB';
+      return (bytes/1024/1024).toFixed(1) + ' MB';
+    }
+
+    document.getElementById('doUploadBtn').onclick = async () => {
+      const category = document.getElementById('uploadCategory').value;
+      if (!category) return alert('Kategori seç!');
+      if (!uploadFiles.length && !uploadUrls.length) return alert('Dosya veya link ekle!');
+
+      const progressDiv = document.getElementById('uploadProgress');
+      const progressBar = document.getElementById('progressBar');
+      const progressText = document.getElementById('progressText');
+      progressDiv.style.display = 'block';
+      document.getElementById('doUploadBtn').disabled = true;
+
+      let success = 0, failed = 0;
+      const total = uploadFiles.length + uploadUrls.length;
+
+      // Upload files
+      for (let i = 0; i < uploadFiles.length; i++) {
+        const f = uploadFiles[i];
+        progressText.textContent = `Yükleniyor: ${f.name} (${i+1}/${total})`;
+        progressBar.style.width = `${Math.round((i/total)*100)}%`;
+        
+        const formData = new FormData();
+        formData.append('file', f);
+        formData.append('category', category);
+
+        try {
+          const res = await fetch(`${API_BASE}/photos/upload`, {
+            method: 'POST',
+            body: formData
+          });
+          if (res.ok) success++; else failed++;
+        } catch (e) { failed++; }
+      }
+
+      // Upload URLs
+      for (let i = 0; i < uploadUrls.length; i++) {
+        const u = uploadUrls[i];
+        progressText.textContent = `İndiriliyor: ${u.substring(0,50)}... (${uploadFiles.length+i+1}/${total})`;
+        progressBar.style.width = `${Math.round(((uploadFiles.length+i)/total)*100)}%`;
+
+        try {
+          const res = await fetch(`${API_BASE}/photos/upload-url`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ url: u, category })
+          });
+          if (res.ok) success++; else failed++;
+        } catch (e) { failed++; }
+      }
+
+      progressBar.style.width = '100%';
+      progressText.textContent = `Tamamlandı: ${success} başarılı, ${failed} hata`;
+      
+      setTimeout(() => {
+        closeUploadModal();
+        location.reload();
+      }, 1500);
+    };
+
+    // CAT MODAL
+    function openCatModal() {
+      document.getElementById('catModal').classList.add('active');
+      document.body.style.overflow = 'hidden';
+      document.getElementById('newCatName').value = '';
+      document.getElementById('newCatName').focus();
+    }
+
+    function closeCatModal() {
+      document.getElementById('catModal').classList.remove('active');
+      document.body.style.overflow = '';
+    }
+
+    document.getElementById('createCatBtn').onclick = async () => {
+      const name = document.getElementById('newCatName').value.trim().toLowerCase();
+      if (!name) return alert('İsim gir!');
+      try {
+        const res = await fetch(`${API_BASE}/categories`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name })
+        });
+        if (res.ok) {
+          closeCatModal();
+          location.reload();
+        } else {
+          const err = await res.json();
+          alert('Hata: ' + (err.error || 'Bilinmeyen'));
+        }
+      } catch (e) { alert('Hata: ' + e.message); }
+    };
+
+    // Hook up buttons
+    document.getElementById('uploadBtn').onclick = openUploadModal;
+    document.getElementById('newCatBtn').onclick = openCatModal;
+
+    // Close modals on backdrop click
+    document.querySelectorAll('.modal').forEach(m => {
+      m.addEventListener('click', (e) => {
+        if (e.target === m) {
+          if (m.id === 'uploadModal') closeUploadModal();
+          else if (m.id === 'catModal') closeCatModal();
+          else closeModal();
+        }
+      });
+    });
+
+    init();
+  </script>
+</body>
+</html>

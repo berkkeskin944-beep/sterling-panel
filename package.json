@@ -1,0 +1,21 @@
+{
+  "name": "discord-photo-bot",
+  "version": "1.0.0",
+  "description": "Dostluk SS - Discord photo archive with Cloudflare Pages + Workers",
+  "main": "bot.js",
+  "scripts": {
+    "start": "node bot.js",
+    "dev": "node --watch bot.js",
+    "deploy": "node deploy.js",
+    "generate": "node -e \"require('./bot.js').generateDataFiles()\"",
+    "pages:deploy": "npx wrangler pages deploy public --project-name=dostluk-panel",
+    "worker:deploy": "npx wrangler deploy"
+  },
+  "dependencies": {
+    "discord.js": "^14.14.1",
+    "dotenv": "^16.3.1"
+  },
+  "devDependencies": {
+    "wrangler": "^3.0.0"
+  }
+}
